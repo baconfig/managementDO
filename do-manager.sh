@@ -198,12 +198,11 @@ done
 }
 
 
-
 select_droplet_menu(){
     mapfile -t droplets < <(
         curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" \
         https://api.digitalocean.com/v2/droplets | \
-        jq -r '.droplets[] | "\(.id)|\(.name)|\(.networks.v4[0].ip_address // \"N/A\")"'
+        jq -r '.droplets[] | "\(.id)|\(.name)|\(.networks.v4[0].ip_address // "N/A")"'
     )
 
     [ ${#droplets[@]} -eq 0 ] && echo "No droplets found." && return 1
@@ -221,14 +220,16 @@ select_droplet_menu(){
     echo "0. Back to Main Menu"
     read -p "Choose Number: " num
 
-    [ "$num" = "0" ] && return 1
-    [[ ! "$num" =~ ^[0-9]+$ ]] && return 1
+    if [ "$num" = "0" ]; then
+        return 1
+    fi
 
-    if [ "$num" -lt 1 ] || [ "$num" -gt "${#droplets[@]}" ]; then
-    echo "Invalid selection"
-    return 1
-fi
-IFS='|' read -r SELECTED_ID SELECTED_NAME SELECTED_IP <<< "${droplets[$((num-1))]}"
+    if ! [[ "$num" =~ ^[0-9]+$ ]] || [ "$num" -lt 1 ] || [ "$num" -gt "${#droplets[@]}" ]; then
+        echo "Invalid selection."
+        return 1
+    fi
+
+    IFS='|' read -r SELECTED_ID SELECTED_NAME SELECTED_IP <<< "${droplets[$((num-1))]}"
 }
 
 list_droplets(){
@@ -334,7 +335,11 @@ reboot_droplet(){
 header
 [ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
 select_droplet_menu || { pause; return; }
-action_request '{"type":"reboot"}' "https://api.digitalocean.com/v2/droplets/$SELECTED_ID/actions"
+
+curl -s -X POST -H "Authorization: Bearer $ACTIVE_TOKEN" \
+-H "Content-Type: application/json" \
+-d '{"type":"reboot"}' \
+"https://api.digitalocean.com/v2/droplets/$SELECTED_ID/actions" | jq .
 pause
 }
 
@@ -342,8 +347,12 @@ rebuild_droplet(){
 header
 [ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
 select_droplet_menu || { pause; return; }
-choose_image || { pause; return; }
-action_request "{\"type\":\"rebuild\",\"image\":\"$image\"}" "https://api.digitalocean.com/v2/droplets/$SELECTED_ID/actions"
+choose_image
+
+curl -s -X POST -H "Authorization: Bearer $ACTIVE_TOKEN" \
+-H "Content-Type: application/json" \
+-d "{\"type\":\"rebuild\",\"image\":\"$image\"}" \
+"https://api.digitalocean.com/v2/droplets/$SELECTED_ID/actions" | jq .
 pause
 }
 
@@ -351,8 +360,12 @@ resize_droplet(){
 header
 [ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
 select_droplet_menu || { pause; return; }
-choose_size || { pause; return; }
-action_request "{\"type\":\"resize\",\"size\":\"$size\",\"disk\":false}" "https://api.digitalocean.com/v2/droplets/$SELECTED_ID/actions"
+choose_size || return
+
+curl -s -X POST -H "Authorization: Bearer $ACTIVE_TOKEN" \
+-H "Content-Type: application/json" \
+-d "{\"type\":\"resize\",\"size\":\"$size\"}" \
+"https://api.digitalocean.com/v2/droplets/$SELECTED_ID/actions" | jq .
 pause
 }
 
@@ -360,86 +373,15 @@ destroy_droplet(){
 header
 [ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
 select_droplet_menu || { pause; return; }
-echo "Type droplet name to confirm: $SELECTED_NAME"
-read -p "Confirm: " c
-[ "$c" != "$SELECTED_NAME" ] && echo "Cancelled" && pause && return
-code=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE -H "Authorization: Bearer $ACTIVE_TOKEN" "https://api.digitalocean.com/v2/droplets/$SELECTED_ID")
-if [ "$code" = "204" ]; then
- echo -e "${GREEN}Destroy request sent successfully.${NC}"
-else
- echo -e "${RED}Failed. HTTP $code${NC}"
-fi
+
+read -p "Delete $SELECTED_NAME ? (y/n): " c
+[ "$c" != "y" ] && return
+
+curl -s -X DELETE -H "Authorization: Bearer $ACTIVE_TOKEN" \
+"https://api.digitalocean.com/v2/droplets/$SELECTED_ID"
+
+echo "Destroy request sent."
 pause
-}
-
-
-account_info(){
-header
-[ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
-
-data=$(curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" \
-https://api.digitalocean.com/v2/account)
-
-email=$(echo "$data" | jq -r '.account.email')
-uuid=$(echo "$data" | jq -r '.account.uuid')
-status=$(echo "$data" | jq -r '.account.status')
-droplet_limit=$(echo "$data" | jq -r '.account.droplet_limit')
-email_verified=$(echo "$data" | jq -r '.account.email_verified')
-team_name=$(echo "$data" | jq -r '.account.team.name // "Personal Account"')
-
-total_droplets=$(curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" \
-https://api.digitalocean.com/v2/droplets | jq '.droplets | length')
-
-total_keys=$(curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" \
-https://api.digitalocean.com/v2/account/keys | jq '.ssh_keys | length')
-
-total_projects=$(curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" \
-https://api.digitalocean.com/v2/projects | jq '.projects | length')
-
-echo -e "${CYAN}╔════════════════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║           INFORMASI AKUN DIGITALOCEAN             ║${NC}"
-echo -e "${CYAN}╚════════════════════════════════════════════════════╝${NC}"
-
-printf "${YELLOW}%-18s${NC} : %s
-" "Email" "$email"
-printf "${YELLOW}%-18s${NC} : %s
-" "UUID" "$uuid"
-printf "${YELLOW}%-18s${NC} : %s
-" "Status" "$status"
-printf "${YELLOW}%-18s${NC} : %s
-" "Email Verified" "$email_verified"
-printf "${YELLOW}%-18s${NC} : %s
-" "Droplet Limit" "$droplet_limit"
-printf "${YELLOW}%-18s${NC} : %s
-" "Team" "$team_name"
-
-echo
-echo -e "${CYAN}══════════ RESOURCE SUMMARY ══════════${NC}"
-
-printf "${BLUE}%-18s${NC} : %s
-" "Total Droplets" "$total_droplets"
-printf "${BLUE}%-18s${NC} : %s
-" "SSH Keys" "$total_keys"
-printf "${BLUE}%-18s${NC} : %s
-" "Projects" "$total_projects"
-
-echo -e "${CYAN}══════════════════════════════════════${NC}"
-pause
-}
-
-
-
-action_request(){
-local payload="$1"
-local endpoint="$2"
-response=$(curl -s -X POST -H "Authorization: Bearer $ACTIVE_TOKEN" -H "Content-Type: application/json" -d "$payload" "$endpoint")
-if echo "$response" | jq -e '.action.id' >/dev/null 2>&1; then
- echo -e "${GREEN}Action submitted successfully.${NC}"
- echo "$response" | jq .
-else
- echo -e "${RED}API Error:${NC}"
- echo "$response" | jq .
-fi
 }
 
 menu(){
@@ -447,28 +389,26 @@ while true; do
 header
 echo "1. Select Account"
 echo "2. Add Account"
-echo "3. Informasi Akun"
-echo "4. Delete Account"
-echo "5. List Droplets"
-echo "6. Deploy Droplet"
-echo "7. Reboot Droplet"
-echo "8. Rebuild Droplet"
-echo "9. Resize Droplet"
-echo "10. Destroy Droplet"
+echo "3. Delete Account"
+echo "4. List Droplets"
+echo "5. Deploy Droplet"
+echo "6. Reboot Droplet"
+echo "7. Rebuild Droplet"
+echo "8. Resize Droplet"
+echo "9. Destroy Droplet"
 echo "0. Exit"
 echo
 read -p "Choose : " c
 case $c in
 1) select_account ;;
 2) add_account ;;
-3) account_info ;;
-4) delete_account ;;
-5) list_droplets ;;
-6) deploy_droplet ;;
-7) reboot_droplet ;;
-8) rebuild_droplet ;;
-9) resize_droplet ;;
-10) destroy_droplet ;;
+3) delete_account ;;
+4) list_droplets ;;
+5) deploy_droplet ;;
+6) reboot_droplet ;;
+7) rebuild_droplet ;;
+8) resize_droplet ;;
+9) destroy_droplet ;;
 0) exit 0 ;;
 esac
 done
