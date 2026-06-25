@@ -198,7 +198,63 @@ done
 }
 
 
-select_droplet_menu(){
+select_droplet_
+account_info(){
+header
+[ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
+
+data=$(curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" \
+https://api.digitalocean.com/v2/account)
+
+email=$(echo "$data" | jq -r '.account.email')
+uuid=$(echo "$data" | jq -r '.account.uuid')
+status=$(echo "$data" | jq -r '.account.status')
+droplet_limit=$(echo "$data" | jq -r '.account.droplet_limit')
+email_verified=$(echo "$data" | jq -r '.account.email_verified')
+team_name=$(echo "$data" | jq -r '.account.team.name // "Personal Account"')
+
+total_droplets=$(curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" \
+https://api.digitalocean.com/v2/droplets | jq '.droplets | length')
+
+total_keys=$(curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" \
+https://api.digitalocean.com/v2/account/keys | jq '.ssh_keys | length')
+
+total_projects=$(curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" \
+https://api.digitalocean.com/v2/projects | jq '.projects | length')
+
+echo -e "${CYAN}╔════════════════════════════════════════════════════╗${NC}"
+echo -e "${GREEN}║           INFORMASI AKUN DIGITALOCEAN             ║${NC}"
+echo -e "${CYAN}╚════════════════════════════════════════════════════╝${NC}"
+
+printf "${YELLOW}%-18s${NC} : %s
+" "Email" "$email"
+printf "${YELLOW}%-18s${NC} : %s
+" "UUID" "$uuid"
+printf "${YELLOW}%-18s${NC} : %s
+" "Status" "$status"
+printf "${YELLOW}%-18s${NC} : %s
+" "Email Verified" "$email_verified"
+printf "${YELLOW}%-18s${NC} : %s
+" "Droplet Limit" "$droplet_limit"
+printf "${YELLOW}%-18s${NC} : %s
+" "Team" "$team_name"
+
+echo
+echo -e "${CYAN}══════════ RESOURCE SUMMARY ══════════${NC}"
+
+printf "${BLUE}%-18s${NC} : %s
+" "Total Droplets" "$total_droplets"
+printf "${BLUE}%-18s${NC} : %s
+" "SSH Keys" "$total_keys"
+printf "${BLUE}%-18s${NC} : %s
+" "Projects" "$total_projects"
+
+echo -e "${CYAN}══════════════════════════════════════${NC}"
+pause
+}
+
+
+menu(){
     mapfile -t droplets < <(
         curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" \
         https://api.digitalocean.com/v2/droplets | \
@@ -384,31 +440,89 @@ echo "Destroy request sent."
 pause
 }
 
+
+account_info(){
+header
+[ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
+
+data=$(curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" \
+https://api.digitalocean.com/v2/account)
+
+email=$(echo "$data" | jq -r '.account.email')
+uuid=$(echo "$data" | jq -r '.account.uuid')
+status=$(echo "$data" | jq -r '.account.status')
+droplet_limit=$(echo "$data" | jq -r '.account.droplet_limit')
+email_verified=$(echo "$data" | jq -r '.account.email_verified')
+team_name=$(echo "$data" | jq -r '.account.team.name // "Personal Account"')
+
+total_droplets=$(curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" \
+https://api.digitalocean.com/v2/droplets | jq '.droplets | length')
+
+total_keys=$(curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" \
+https://api.digitalocean.com/v2/account/keys | jq '.ssh_keys | length')
+
+total_projects=$(curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" \
+https://api.digitalocean.com/v2/projects | jq '.projects | length')
+
+echo -e "${CYAN}╔════════════════════════════════════════════════════╗${NC}"
+echo -e "${GREEN}║           INFORMASI AKUN DIGITALOCEAN             ║${NC}"
+echo -e "${CYAN}╚════════════════════════════════════════════════════╝${NC}"
+
+printf "${YELLOW}%-18s${NC} : %s
+" "Email" "$email"
+printf "${YELLOW}%-18s${NC} : %s
+" "UUID" "$uuid"
+printf "${YELLOW}%-18s${NC} : %s
+" "Status" "$status"
+printf "${YELLOW}%-18s${NC} : %s
+" "Email Verified" "$email_verified"
+printf "${YELLOW}%-18s${NC} : %s
+" "Droplet Limit" "$droplet_limit"
+printf "${YELLOW}%-18s${NC} : %s
+" "Team" "$team_name"
+
+echo
+echo -e "${CYAN}══════════ RESOURCE SUMMARY ══════════${NC}"
+
+printf "${BLUE}%-18s${NC} : %s
+" "Total Droplets" "$total_droplets"
+printf "${BLUE}%-18s${NC} : %s
+" "SSH Keys" "$total_keys"
+printf "${BLUE}%-18s${NC} : %s
+" "Projects" "$total_projects"
+
+echo -e "${CYAN}══════════════════════════════════════${NC}"
+pause
+}
+
+
 menu(){
 while true; do
 header
 echo "1. Select Account"
 echo "2. Add Account"
-echo "3. Delete Account"
-echo "4. List Droplets"
-echo "5. Deploy Droplet"
-echo "6. Reboot Droplet"
-echo "7. Rebuild Droplet"
-echo "8. Resize Droplet"
-echo "9. Destroy Droplet"
+echo "3. Informasi Akun"
+echo "4. Delete Account"
+echo "5. List Droplets"
+echo "6. Deploy Droplet"
+echo "7. Reboot Droplet"
+echo "8. Rebuild Droplet"
+echo "9. Resize Droplet"
+echo "10. Destroy Droplet"
 echo "0. Exit"
 echo
 read -p "Choose : " c
 case $c in
 1) select_account ;;
 2) add_account ;;
-3) delete_account ;;
-4) list_droplets ;;
-5) deploy_droplet ;;
-6) reboot_droplet ;;
-7) rebuild_droplet ;;
-8) resize_droplet ;;
-9) destroy_droplet ;;
+3) account_info ;;
+4) delete_account ;;
+5) list_droplets ;;
+6) deploy_droplet ;;
+7) reboot_droplet ;;
+8) rebuild_droplet ;;
+9) resize_droplet ;;
+10) destroy_droplet ;;
 0) exit 0 ;;
 esac
 done
