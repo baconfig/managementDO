@@ -225,9 +225,26 @@ select_droplet_menu(){
 
 list_droplets(){
 header
+
+[ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
+
 curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" \
 https://api.digitalocean.com/v2/droplets | \
-jq -r '.droplets[] | "ID: \(.id) | Name: \(.name) | IP: \(.networks.v4[0].ip_address // "N/A") | Size: \(.size.slug)"'
+jq -r '.droplets[] |
+"\(.status)|\(.id)|\(.name)|\(.networks.v4[]? | select(.type=="public") | .ip_address)|\(.size.slug)"' |
+while IFS='|' read -r status id name ip size; do
+
+    if [ "$status" = "active" ]; then
+        state="${GREEN}[ON ]${NC}"
+    else
+        state="${RED}[OFF]${NC}"
+    fi
+
+    printf "%b %-20s %-15s %-18s ID:%s\n" \
+        "$state" "$name" "${ip:-N/A}" "$size" "$id"
+
+done
+
 pause
 }
 
