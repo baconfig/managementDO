@@ -390,8 +390,26 @@ account_info(){
 header
 [ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
 
-curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" \
-https://api.digitalocean.com/v2/account | jq .
+info=$(curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" \
+https://api.digitalocean.com/v2/account)
+
+name=$(echo "$info" | jq -r '.account.name // "-"')
+email=$(echo "$info" | jq -r '.account.email // "-"')
+uuid=$(echo "$info" | jq -r '.account.uuid // "-"')
+status=$(echo "$info" | jq -r '.account.status // "-"')
+droplet_limit=$(echo "$info" | jq -r '.account.droplet_limit // "-"')
+email_verified=$(echo "$info" | jq -r '.account.email_verified // "-"')
+
+echo "===================================================="
+echo "                 ACCOUNT INFORMATION"
+echo "===================================================="
+printf "%-18s : %s\n" "Account Name" "$name"
+printf "%-18s : %s\n" "Email" "$email"
+printf "%-18s : %s\n" "UUID" "$uuid"
+printf "%-18s : %s\n" "Status" "$status"
+printf "%-18s : %s\n" "Droplet Limit" "$droplet_limit"
+printf "%-18s : %s\n" "Email Verified" "$email_verified"
+echo "===================================================="
 
 pause
 }
