@@ -193,6 +193,36 @@ esac
 done
 }
 
+
+select_droplet_menu(){
+    mapfile -t droplets < <(
+        curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" \
+        https://api.digitalocean.com/v2/droplets | \
+        jq -r '.droplets[] | "\(.id)|\(.name)|\(.networks.v4[0].ip_address // "N/A")"'
+    )
+
+    [ ${#droplets[@]} -eq 0 ] && echo "No droplets found." && return 1
+
+    echo "===================================="
+    echo "         SELECT DROPLET"
+    echo "===================================="
+
+    for i in "${!droplets[@]}"; do
+        IFS='|' read -r did dname dip <<< "${droplets[$i]}"
+        printf "%2d. %-20s %s\n" "$((i+1))" "$dname" "$dip"
+    done
+
+    echo
+    read -p "Choose Number: " num
+
+    if ! [[ "$num" =~ ^[0-9]+$ ]] || [ "$num" -lt 1 ] || [ "$num" -gt "${#droplets[@]}" ]; then
+        echo "Invalid selection."
+        return 1
+    fi
+
+    IFS='|' read -r SELECTED_ID SELECTED_NAME SELECTED_IP <<< "${droplets[$((num-1))]}"
+}
+
 list_droplets(){
 header
 curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" \
@@ -273,43 +303,53 @@ pause
 
 reboot_droplet(){
 header
-read -p "Droplet ID : " id
+[ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
+select_droplet_menu || { pause; return; }
+
 curl -s -X POST -H "Authorization: Bearer $ACTIVE_TOKEN" \
 -H "Content-Type: application/json" \
 -d '{"type":"reboot"}' \
-"https://api.digitalocean.com/v2/droplets/$id/actions" | jq .
+"https://api.digitalocean.com/v2/droplets/$SELECTED_ID/actions" | jq .
 pause
 }
 
 rebuild_droplet(){
 header
-read -p "Droplet ID : " id
+[ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
+select_droplet_menu || { pause; return; }
 choose_image
+
 curl -s -X POST -H "Authorization: Bearer $ACTIVE_TOKEN" \
 -H "Content-Type: application/json" \
 -d "{\"type\":\"rebuild\",\"image\":\"$image\"}" \
-"https://api.digitalocean.com/v2/droplets/$id/actions" | jq .
+"https://api.digitalocean.com/v2/droplets/$SELECTED_ID/actions" | jq .
 pause
 }
 
 resize_droplet(){
 header
-read -p "Droplet ID : " id
+[ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
+select_droplet_menu || { pause; return; }
 choose_size || return
+
 curl -s -X POST -H "Authorization: Bearer $ACTIVE_TOKEN" \
 -H "Content-Type: application/json" \
 -d "{\"type\":\"resize\",\"size\":\"$size\"}" \
-"https://api.digitalocean.com/v2/droplets/$id/actions" | jq .
+"https://api.digitalocean.com/v2/droplets/$SELECTED_ID/actions" | jq .
 pause
 }
 
 destroy_droplet(){
 header
-read -p "Droplet ID : " id
-read -p "Confirm delete (y/n): " c
+[ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
+select_droplet_menu || { pause; return; }
+
+read -p "Delete $SELECTED_NAME ? (y/n): " c
 [ "$c" != "y" ] && return
+
 curl -s -X DELETE -H "Authorization: Bearer $ACTIVE_TOKEN" \
-"https://api.digitalocean.com/v2/droplets/$id"
+"https://api.digitalocean.com/v2/droplets/$SELECTED_ID"
+
 echo "Destroy request sent."
 pause
 }
