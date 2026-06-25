@@ -7,8 +7,6 @@
 
 DB_FILE="do_accounts.db"
 ACTIVE_FILE=".active_account"
-SCRIPT_URL="https://raw.githubusercontent.com/baconfig/managementDO/main/do-manager.sh"
-SCRIPT_PATH="$(realpath "$0")"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -25,7 +23,7 @@ header(){
 clear
 load_active
 echo -e "${CYAN}====================================================${NC}"
-echo -e "${GREEN} MANAGE API DigitalOcean By Ahmadstoreku ${NC}"
+echo -e "${GREEN} MANAGE API DigitalOcean By Ahmadstore ${NC}"
 echo -e "${CYAN}====================================================${NC}"
 if [ -n "$ACTIVE_TOKEN" ]; then
 info=$(curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" https://api.digitalocean.com/v2/account)
@@ -217,37 +215,7 @@ done
 }
 
 
-select_droplet_
-update_script() {
-    header
-    echo "===================================="
-    echo "        CHECKING FOR UPDATE"
-    echo "===================================="
-    TMP_FILE=$(mktemp)
-    if ! curl -fsSL "$SCRIPT_URL" -o "$TMP_FILE"; then
-        echo -e "${RED}Failed to connect to GitHub.${NC}"
-        rm -f "$TMP_FILE"; pause; return
-    fi
-    if cmp -s "$SCRIPT_PATH" "$TMP_FILE"; then
-        echo -e "${GREEN}You are already using the latest version.${NC}"
-        rm -f "$TMP_FILE"; pause; return
-    fi
-    echo -e "${YELLOW}New update found!${NC}"
-    read -p "Update now? (y/n): " confirm
-    if [[ "$confirm" =~ ^[Yy]$ ]]; then
-        chmod +x "$TMP_FILE"
-        mv "$TMP_FILE" "$SCRIPT_PATH"
-        echo -e "${GREEN}Update completed successfully.${NC}"
-        sleep 2
-        exec "$SCRIPT_PATH"
-    else
-        rm -f "$TMP_FILE"
-        pause
-    fi
-}
-
-
-menu(){
+select_droplet_menu(){
     mapfile -t droplets < <(
         curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" \
         https://api.digitalocean.com/v2/droplets | \
@@ -514,37 +482,7 @@ pause
 }
 
 
-manage_droplet_
-update_script() {
-    header
-    echo "===================================="
-    echo "        CHECKING FOR UPDATE"
-    echo "===================================="
-    TMP_FILE=$(mktemp)
-    if ! curl -fsSL "$SCRIPT_URL" -o "$TMP_FILE"; then
-        echo -e "${RED}Failed to connect to GitHub.${NC}"
-        rm -f "$TMP_FILE"; pause; return
-    fi
-    if cmp -s "$SCRIPT_PATH" "$TMP_FILE"; then
-        echo -e "${GREEN}You are already using the latest version.${NC}"
-        rm -f "$TMP_FILE"; pause; return
-    fi
-    echo -e "${YELLOW}New update found!${NC}"
-    read -p "Update now? (y/n): " confirm
-    if [[ "$confirm" =~ ^[Yy]$ ]]; then
-        chmod +x "$TMP_FILE"
-        mv "$TMP_FILE" "$SCRIPT_PATH"
-        echo -e "${GREEN}Update completed successfully.${NC}"
-        sleep 2
-        exec "$SCRIPT_PATH"
-    else
-        rm -f "$TMP_FILE"
-        pause
-    fi
-}
-
-
-menu(){
+manage_droplet_menu(){
 while true; do
 header
 echo "========== MANAGE DROPLET =========="
@@ -572,36 +510,6 @@ done
 }
 
 
-
-update_script() {
-    header
-    echo "===================================="
-    echo "        CHECKING FOR UPDATE"
-    echo "===================================="
-    TMP_FILE=$(mktemp)
-    if ! curl -fsSL "$SCRIPT_URL" -o "$TMP_FILE"; then
-        echo -e "${RED}Failed to connect to GitHub.${NC}"
-        rm -f "$TMP_FILE"; pause; return
-    fi
-    if cmp -s "$SCRIPT_PATH" "$TMP_FILE"; then
-        echo -e "${GREEN}You are already using the latest version.${NC}"
-        rm -f "$TMP_FILE"; pause; return
-    fi
-    echo -e "${YELLOW}New update found!${NC}"
-    read -p "Update now? (y/n): " confirm
-    if [[ "$confirm" =~ ^[Yy]$ ]]; then
-        chmod +x "$TMP_FILE"
-        mv "$TMP_FILE" "$SCRIPT_PATH"
-        echo -e "${GREEN}Update completed successfully.${NC}"
-        sleep 2
-        exec "$SCRIPT_PATH"
-    else
-        rm -f "$TMP_FILE"
-        pause
-    fi
-}
-
-
 menu(){
 while true; do
 header
@@ -609,7 +517,6 @@ echo "1. Select Account"
 echo "2. Add Account"
 echo "3. Delete Account"
 echo "4. Manage Droplet"
-echo "5. Update Script"
 echo "0. Exit"
 echo
 read -p "Choose : " c
@@ -618,7 +525,6 @@ case $c in
 2) add_account ;;
 3) delete_account ;;
 4) manage_droplet_menu ;;
-5) update_script ;;
 0) exit 0 ;;
 esac
 done
