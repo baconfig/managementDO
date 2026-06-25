@@ -73,8 +73,10 @@ select_account(){
     fi
 
     echo "$line" > "$ACTIVE_FILE"
+    load_active
     echo -e "${GREEN}Active account changed.${NC}"
-    pause
+    echo
+    account_info
 }
 
 delete_account(){
