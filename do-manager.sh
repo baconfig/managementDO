@@ -264,9 +264,9 @@ pause
 
 input_password_hostname() {
     clear
+    read -p "Input Hostname : " droplet_hostname
     read -sp "Input Root Password : " droplet_password
     echo ""
-    read -p "Input Hostname : " droplet_hostname
 }
 
 
