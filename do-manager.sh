@@ -224,7 +224,11 @@ select_droplet_menu(){
     [ "$num" = "0" ] && return 1
     [[ ! "$num" =~ ^[0-9]+$ ]] && return 1
 
-    IFS='|' read -r SELECTED_ID SELECTED_NAME SELECTED_IP <<< "${droplets[$((num-1))]}"
+    if [ "$num" -lt 1 ] || [ "$num" -gt "${#droplets[@]}" ]; then
+    echo "Invalid selection"
+    return 1
+fi
+IFS='|' read -r SELECTED_ID SELECTED_NAME SELECTED_IP <<< "${droplets[$((num-1))]}"
 }
 
 list_droplets(){
@@ -330,11 +334,7 @@ reboot_droplet(){
 header
 [ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
 select_droplet_menu || { pause; return; }
-
-curl -s -X POST -H "Authorization: Bearer $ACTIVE_TOKEN" \
--H "Content-Type: application/json" \
--d '{"type":"reboot"}' \
-"https://api.digitalocean.com/v2/droplets/$SELECTED_ID/actions" | jq .
+action_request '{"type":"reboot"}' "https://api.digitalocean.com/v2/droplets/$SELECTED_ID/actions"
 pause
 }
 
@@ -342,12 +342,8 @@ rebuild_droplet(){
 header
 [ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
 select_droplet_menu || { pause; return; }
-choose_image || return
-
-curl -s -X POST -H "Authorization: Bearer $ACTIVE_TOKEN" \
--H "Content-Type: application/json" \
--d "{\"type\":\"rebuild\",\"image\":\"$image\"}" \
-"https://api.digitalocean.com/v2/droplets/$SELECTED_ID/actions" | jq .
+choose_image || { pause; return; }
+action_request "{\"type\":\"rebuild\",\"image\":\"$image\"}" "https://api.digitalocean.com/v2/droplets/$SELECTED_ID/actions"
 pause
 }
 
@@ -355,12 +351,8 @@ resize_droplet(){
 header
 [ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
 select_droplet_menu || { pause; return; }
-choose_size || return
-
-curl -s -X POST -H "Authorization: Bearer $ACTIVE_TOKEN" \
--H "Content-Type: application/json" \
--d "{\"type\":\"resize\",\"size\":\"$size\",\"disk\":false}" \
-"https://api.digitalocean.com/v2/droplets/$SELECTED_ID/actions" | jq .
+choose_size || { pause; return; }
+action_request "{\"type\":\"resize\",\"size\":\"$size\",\"disk\":false}" "https://api.digitalocean.com/v2/droplets/$SELECTED_ID/actions"
 pause
 }
 
@@ -368,14 +360,15 @@ destroy_droplet(){
 header
 [ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
 select_droplet_menu || { pause; return; }
-
-read -p "Delete $SELECTED_NAME ? (y/n): " c
-[ "$c" != "y" ] && return
-
-curl -s -X DELETE -H "Authorization: Bearer $ACTIVE_TOKEN" \
-"https://api.digitalocean.com/v2/droplets/$SELECTED_ID"
-
-echo "Destroy request sent."
+echo "Type droplet name to confirm: $SELECTED_NAME"
+read -p "Confirm: " c
+[ "$c" != "$SELECTED_NAME" ] && echo "Cancelled" && pause && return
+code=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE -H "Authorization: Bearer $ACTIVE_TOKEN" "https://api.digitalocean.com/v2/droplets/$SELECTED_ID")
+if [ "$code" = "204" ]; then
+ echo -e "${GREEN}Destroy request sent successfully.${NC}"
+else
+ echo -e "${RED}Failed. HTTP $code${NC}"
+fi
 pause
 }
 
@@ -434,6 +427,20 @@ echo -e "${CYAN}═════════════════════�
 pause
 }
 
+
+
+action_request(){
+local payload="$1"
+local endpoint="$2"
+response=$(curl -s -X POST -H "Authorization: Bearer $ACTIVE_TOKEN" -H "Content-Type: application/json" -d "$payload" "$endpoint")
+if echo "$response" | jq -e '.action.id' >/dev/null 2>&1; then
+ echo -e "${GREEN}Action submitted successfully.${NC}"
+ echo "$response" | jq .
+else
+ echo -e "${RED}API Error:${NC}"
+ echo "$response" | jq .
+fi
+}
 
 menu(){
 while true; do
