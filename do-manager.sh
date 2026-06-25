@@ -201,28 +201,73 @@ jq -r '.droplets[] | "ID: \(.id) | Name: \(.name) | IP: \(.networks.v4[0].ip_add
 pause
 }
 
+
+input_password_hostname() {
+    clear
+    read -sp "Input Root Password : " droplet_password
+    echo ""
+    read -p "Input Hostname : " droplet_hostname
+}
+
+
 deploy_droplet(){
 header
 [ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
 
-read -p "Hostname : " name
+input_password_hostname
+
 choose_region
 choose_image
 choose_size || return
+
+user_data=$(cat <<EOF
+#!/bin/bash
+sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+sed -i 's/^#*PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+systemctl restart ssh || systemctl restart sshd
+echo "root:${droplet_password}" | chpasswd
+EOF
+)
 
 response=$(curl -s -X POST \
 -H "Authorization: Bearer $ACTIVE_TOKEN" \
 -H "Content-Type: application/json" \
 -d "{
-\"name\":\"$name\",
-\"region\":\"$region\",
-\"size\":\"$size\",
-\"image\":\"$image\",
+\"name\":\"${droplet_hostname}\",
+\"region\":\"${region}\",
+\"size\":\"${size}\",
+\"image\":\"${image}\",
 \"ipv6\":true,
-\"monitoring\":true
+\"monitoring\":true,
+\"user_data\":$(jq -Rs . <<< "$user_data")
 }" https://api.digitalocean.com/v2/droplets)
 
+droplet_id=$(echo "$response" | jq -r '.droplet.id')
+
+if [ "$droplet_id" != "null" ] && [ -n "$droplet_id" ]; then
+
+sleep 20
+
+droplet_ip=$(curl -s \
+-H "Authorization: Bearer $ACTIVE_TOKEN" \
+"https://api.digitalocean.com/v2/droplets/$droplet_id" | \
+jq -r '.droplet.networks.v4[] | select(.type=="public") | .ip_address' 2>/dev/null)
+
+echo ""
+echo -e "${GREEN}================================================${NC}"
+echo -e "${GREEN}           VPS READY TO USE                     ${NC}"
+echo -e "${GREEN}================================================${NC}"
+echo -e "${CYAN}Hostname   :${NC} $droplet_hostname"
+echo -e "${CYAN}IP Address :${NC} ${droplet_ip:-Pending}"
+echo -e "${CYAN}Username   :${NC} root"
+echo -e "${CYAN}Password   :${NC} $droplet_password"
+echo -e "${CYAN}Droplet ID :${NC} $droplet_id"
+echo -e "${GREEN}================================================${NC}"
+
+else
 echo "$response" | jq .
+fi
+
 pause
 }
 
