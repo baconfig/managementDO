@@ -198,7 +198,45 @@ done
 }
 
 
-select_droplet_menu(){
+select_droplet_
+
+account_info(){
+header
+
+[ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
+
+curl -s \
+-H "Authorization: Bearer $ACTIVE_TOKEN" \
+https://api.digitalocean.com/v2/account | jq -r '
+.account |
+"
+================ ACCOUNT INFO ================
+
+Email          : \(.email)
+UUID           : \(.uuid)
+Status         : \(.status)
+Email Verified : \(.email_verified)
+Droplet Limit  : \(.droplet_limit)
+
+============================================="
+'
+
+pause
+}
+
+account_balance(){
+header
+
+[ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
+
+curl -s \
+-H "Authorization: Bearer $ACTIVE_TOKEN" \
+https://api.digitalocean.com/v2/customers/my/balance | jq .
+
+pause
+}
+
+menu(){
     mapfile -t droplets < <(
         curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" \
         https://api.digitalocean.com/v2/droplets | \
@@ -384,6 +422,44 @@ echo "Destroy request sent."
 pause
 }
 
+
+
+account_info(){
+header
+
+[ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
+
+curl -s \
+-H "Authorization: Bearer $ACTIVE_TOKEN" \
+https://api.digitalocean.com/v2/account | jq -r '
+.account |
+"
+================ ACCOUNT INFO ================
+
+Email          : \(.email)
+UUID           : \(.uuid)
+Status         : \(.status)
+Email Verified : \(.email_verified)
+Droplet Limit  : \(.droplet_limit)
+
+============================================="
+'
+
+pause
+}
+
+account_balance(){
+header
+
+[ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
+
+curl -s \
+-H "Authorization: Bearer $ACTIVE_TOKEN" \
+https://api.digitalocean.com/v2/customers/my/balance | jq .
+
+pause
+}
+
 menu(){
 while true; do
 header
@@ -396,6 +472,8 @@ echo "6. Reboot Droplet"
 echo "7. Rebuild Droplet"
 echo "8. Resize Droplet"
 echo "9. Destroy Droplet"
+echo "10. Account Information"
+echo "11. Account Balance"
 echo "0. Exit"
 echo
 read -p "Choose : " c
@@ -409,6 +487,8 @@ case $c in
 7) rebuild_droplet ;;
 8) resize_droplet ;;
 9) destroy_droplet ;;
+10) account_info ;;
+11) account_balance ;;
 0) exit 0 ;;
 esac
 done
