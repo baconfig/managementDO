@@ -334,6 +334,9 @@ pause
 reboot_droplet(){
 header
 [ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
+echo "===================================="
+echo "      PILIH VPS YANG MAU DIREBOOT"
+echo "===================================="
 select_droplet_menu || { pause; return; }
 
 curl -s -X POST -H "Authorization: Bearer $ACTIVE_TOKEN" \
@@ -346,6 +349,9 @@ pause
 rebuild_droplet(){
 header
 [ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
+echo "===================================="
+echo "      PILIH VPS YANG MAU DIREBUILD"
+echo "===================================="
 select_droplet_menu || { pause; return; }
 choose_image
 
@@ -359,6 +365,9 @@ pause
 resize_droplet(){
 header
 [ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
+echo "===================================="
+echo "      PILIH VPS YANG MAU DIRESIZE"
+echo "===================================="
 select_droplet_menu || { pause; return; }
 choose_size || return
 
@@ -372,6 +381,9 @@ pause
 destroy_droplet(){
 header
 [ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
+echo "===================================="
+echo "      PILIH VPS YANG MAU DIHAPUS"
+echo "===================================="
 select_droplet_menu || { pause; return; }
 
 read -p "Delete $SELECTED_NAME ? (y/n): " c
