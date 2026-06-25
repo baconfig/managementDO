@@ -100,6 +100,7 @@ choose_region() {
         echo "7. Toronto"
         echo "8. Bangalore"
         echo "9. Sydney"
+        echo "0. Back to Main Menu"
         read -p "Input region number: " region_choice
 
         case $region_choice in
@@ -112,6 +113,7 @@ choose_region() {
             7) region="tor1"; break ;;
             8) region="blr1"; break ;;
             9) region="syd1"; break ;;
+            0) return 1 ;;
         esac
     done
 }
@@ -134,6 +136,7 @@ choose_image() {
         echo "12. Ubuntu Desktop"
         echo "13. OpenVPN"
         echo "14. WordPress"
+        echo "0. Back to Main Menu"
         read -p "Input image number: " image_choice
 
         case $image_choice in
@@ -151,6 +154,7 @@ choose_image() {
             12) image="ubuntu-desktop-gnome"; break ;;
             13) image="openvpn"; break ;;
             14) image="wordpress"; break ;;
+            0) return 1 ;;
         esac
     done
 }
@@ -213,7 +217,12 @@ select_droplet_menu(){
     done
 
     echo
+    echo "0. Back to Main Menu"
     read -p "Choose Number: " num
+
+    if [ "$num" = "0" ]; then
+        return 1
+    fi
 
     if ! [[ "$num" =~ ^[0-9]+$ ]] || [ "$num" -lt 1 ] || [ "$num" -gt "${#droplets[@]}" ]; then
         echo "Invalid selection."
