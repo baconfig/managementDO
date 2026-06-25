@@ -237,26 +237,64 @@ header
 
 [ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
 
+running=0
+stopped=0
+total_ram=0
+total_vcpu=0
+no=1
+
+echo "========================================================================================================================"
+printf "%-3s %-8s %-18s %-15s %-14s %-12s %-20s %-8s %-12s
+" \
+"No" "STATUS" "HOSTNAME" "PUBLIC IP" "REGION" "SPEC" "OS" "AGE" "ID"
+echo "========================================================================================================================"
+
 curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" \
 https://api.digitalocean.com/v2/droplets | \
 jq -r '.droplets[] |
-"\(.status)|\(.id)|\(.name)|\(.networks.v4[]? | select(.type=="public") | .ip_address)|\(.size.slug)|\(.created_at)"' |
-while IFS='|' read -r status id name ip size created; do
-
-    if [ "$status" = "active" ]; then
-        state="${GREEN}[ON ]${NC}"
-    else
-        state="${RED}[OFF]${NC}"
-    fi
+"\(.status)|\(.id)|\(.name)|\(.networks.v4[]? | select(.type=="public") | .ip_address)|\(.size.vcpus)|\(.size.memory)|\(.region.slug)|\(.image.distribution) \(.image.name)|\(.created_at)"' |
+while IFS='|' read -r status id name ip vcpus memory region os created; do
 
     created_ts=$(date -d "$created" +%s 2>/dev/null)
     now_ts=$(date +%s)
     age_days=$(( (now_ts - created_ts) / 86400 ))
 
-    printf "%b %-20s %-15s %-18s %4s Hari | ID:%s
+    case "$region" in
+        sgp1) region_name="Singapore" ;;
+        nyc1) region_name="New York" ;;
+        sfo1) region_name="San Francisco" ;;
+        ams1) region_name="Amsterdam" ;;
+        lon1) region_name="London" ;;
+        fra1) region_name="Frankfurt" ;;
+        tor1) region_name="Toronto" ;;
+        blr1) region_name="Bangalore" ;;
+        syd1) region_name="Sydney" ;;
+        *) region_name="$region" ;;
+    esac
+
+    spec="${vcpus}C/$((memory/1024))GB"
+
+    if [ "$status" = "active" ]; then
+        state="ON"
+        running=$((running+1))
+    else
+        state="OFF"
+        stopped=$((stopped+1))
+    fi
+
+    total_ram=$((total_ram + memory))
+    total_vcpu=$((total_vcpu + vcpus))
+
+    printf "%-3s %-8s %-18s %-15s %-14s %-12s %-20s %-8s %-12s
 " \
-        "$state" "$name" "${ip:-N/A}" "$size" "$age_days" "$id"
+    "$no" "$state" "$name" "${ip:-N/A}" "$region_name" "$spec" "$os" "${age_days}d" "$id"
+
+    no=$((no+1))
 done
+
+echo "========================================================================================================================"
+echo "Summary: RAM & vCPU totals may vary when using shell pipelines."
+echo "========================================================================================================================"
 
 pause
 }
