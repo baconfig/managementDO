@@ -100,7 +100,6 @@ choose_region() {
         echo "7. Toronto"
         echo "8. Bangalore"
         echo "9. Sydney"
-        echo "0. Back to Main Menu"
         read -p "Input region number: " region_choice
 
         case $region_choice in
@@ -113,7 +112,6 @@ choose_region() {
             7) region="tor1"; break ;;
             8) region="blr1"; break ;;
             9) region="syd1"; break ;;
-            0) return 1 ;;
         esac
     done
 }
@@ -136,7 +134,6 @@ choose_image() {
         echo "12. Ubuntu Desktop"
         echo "13. OpenVPN"
         echo "14. WordPress"
-        echo "0. Back to Main Menu"
         read -p "Input image number: " image_choice
 
         case $image_choice in
@@ -154,7 +151,6 @@ choose_image() {
             12) image="ubuntu-desktop-gnome"; break ;;
             13) image="openvpn"; break ;;
             14) image="wordpress"; break ;;
-            0) return 1 ;;
         esac
     done
 }
@@ -198,64 +194,34 @@ done
 }
 
 
-select_droplet_menu(){
-    mapfile -t droplets < <(
-        curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" \
-        https://api.digitalocean.com/v2/droplets | \
-        jq -r '.droplets[] | "\(.id)|\(.name)|\(.networks.v4[0].ip_address // "N/A")"'
-    )
-
-    [ ${#droplets[@]} -eq 0 ] && echo "No droplets found." && return 1
-
-    echo "===================================="
-    echo "         SELECT DROPLET"
-    echo "===================================="
-
-    for i in "${!droplets[@]}"; do
-        IFS='|' read -r did dname dip <<< "${droplets[$i]}"
-        printf "%2d. %-20s %s\n" "$((i+1))" "$dname" "$dip"
-    done
-
-    echo
-    echo "0. Back to Main Menu"
-    read -p "Choose Number: " num
-
-    if [ "$num" = "0" ]; then
-        return 1
-    fi
-
-    if ! [[ "$num" =~ ^[0-9]+$ ]] || [ "$num" -lt 1 ] || [ "$num" -gt "${#droplets[@]}" ]; then
-        echo "Invalid selection."
-        return 1
-    fi
-
-    IFS='|' read -r SELECTED_ID SELECTED_NAME SELECTED_IP <<< "${droplets[$((num-1))]}"
-}
-
 list_droplets(){
 header
 
-[ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
+echo "================================================================================================================"
+printf "%-12s %-20s %-16s %-18s %-10s
+" "ID" "HOSTNAME" "IP ADDRESS" "SIZE" "AGE"
+echo "================================================================================================================"
 
-curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" \
-https://api.digitalocean.com/v2/droplets | \
-jq -r '.droplets[] |
-"\(.status)|\(.id)|\(.name)|\(.networks.v4[]? | select(.type=="public") | .ip_address)|\(.size.slug)"' |
-while IFS='|' read -r status id name ip size; do
+curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" https://api.digitalocean.com/v2/droplets | jq -c '.droplets[]' | while read -r droplet
+do
+    id=$(echo "$droplet" | jq -r '.id')
+    name=$(echo "$droplet" | jq -r '.name')
+    ip=$(echo "$droplet" | jq -r '.networks.v4[]? | select(.type=="public") | .ip_address' | head -1)
+    size=$(echo "$droplet" | jq -r '.size.slug')
+    created=$(echo "$droplet" | jq -r '.created_at')
 
-    if [ "$status" = "active" ]; then
-        state="${GREEN}[ON ]${NC}"
-    else
-        state="${RED}[OFF]${NC}"
-    fi
+    created_epoch=$(date -d "$created" +%s 2>/dev/null)
+    now_epoch=$(date +%s)
+    age_days=$(( (now_epoch - created_epoch) / 86400 ))
 
-    printf "%b %-20s %-15s %-18s ID:%s\n" \
-        "$state" "$name" "${ip:-N/A}" "$size" "$id"
-
+    printf "%-12s %-20s %-16s %-18s %-10s
+" "$id" "$name" "${ip:-N/A}" "$size" "${age_days} Day(s)"
 done
 
+echo "================================================================================================================"
 pause
 }
+
 
 
 input_password_hostname() {
@@ -329,53 +295,43 @@ pause
 
 reboot_droplet(){
 header
-[ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
-select_droplet_menu || { pause; return; }
-
+read -p "Droplet ID : " id
 curl -s -X POST -H "Authorization: Bearer $ACTIVE_TOKEN" \
 -H "Content-Type: application/json" \
 -d '{"type":"reboot"}' \
-"https://api.digitalocean.com/v2/droplets/$SELECTED_ID/actions" | jq .
+"https://api.digitalocean.com/v2/droplets/$id/actions" | jq .
 pause
 }
 
 rebuild_droplet(){
 header
-[ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
-select_droplet_menu || { pause; return; }
+read -p "Droplet ID : " id
 choose_image
-
 curl -s -X POST -H "Authorization: Bearer $ACTIVE_TOKEN" \
 -H "Content-Type: application/json" \
 -d "{\"type\":\"rebuild\",\"image\":\"$image\"}" \
-"https://api.digitalocean.com/v2/droplets/$SELECTED_ID/actions" | jq .
+"https://api.digitalocean.com/v2/droplets/$id/actions" | jq .
 pause
 }
 
 resize_droplet(){
 header
-[ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
-select_droplet_menu || { pause; return; }
+read -p "Droplet ID : " id
 choose_size || return
-
 curl -s -X POST -H "Authorization: Bearer $ACTIVE_TOKEN" \
 -H "Content-Type: application/json" \
 -d "{\"type\":\"resize\",\"size\":\"$size\"}" \
-"https://api.digitalocean.com/v2/droplets/$SELECTED_ID/actions" | jq .
+"https://api.digitalocean.com/v2/droplets/$id/actions" | jq .
 pause
 }
 
 destroy_droplet(){
 header
-[ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
-select_droplet_menu || { pause; return; }
-
-read -p "Delete $SELECTED_NAME ? (y/n): " c
+read -p "Droplet ID : " id
+read -p "Confirm delete (y/n): " c
 [ "$c" != "y" ] && return
-
 curl -s -X DELETE -H "Authorization: Bearer $ACTIVE_TOKEN" \
-"https://api.digitalocean.com/v2/droplets/$SELECTED_ID"
-
+"https://api.digitalocean.com/v2/droplets/$id"
 echo "Destroy request sent."
 pause
 }
