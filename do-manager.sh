@@ -8,9 +8,6 @@
 DB_FILE="do_accounts.db"
 ACTIVE_FILE=".active_account"
 
-SCRIPT_VERSION="1.0.0"
-UPDATE_URL="https://raw.githubusercontent.com/baconfig/managementDO/main/do-manager.sh"
-
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -218,28 +215,7 @@ done
 }
 
 
-select_droplet_
-update_script(){
-header
-tmp=$(mktemp)
-echo "Checking update..."
-if curl -fsSL "$UPDATE_URL" -o "$tmp"; then
- cp "$0" "$0.bak"
- chmod +x "$tmp"
- cp "$tmp" "$0"
- chmod +x "$0"
- rm -f "$tmp"
- echo "Update berhasil. Jalankan ulang script."
- exit 0
-else
- echo "Update gagal."
- rm -f "$tmp"
- pause
-fi
-}
-
-
-menu(){
+select_droplet_menu(){
     mapfile -t droplets < <(
         curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" \
         https://api.digitalocean.com/v2/droplets | \
@@ -506,28 +482,7 @@ pause
 }
 
 
-manage_droplet_
-update_script(){
-header
-tmp=$(mktemp)
-echo "Checking update..."
-if curl -fsSL "$UPDATE_URL" -o "$tmp"; then
- cp "$0" "$0.bak"
- chmod +x "$tmp"
- cp "$tmp" "$0"
- chmod +x "$0"
- rm -f "$tmp"
- echo "Update berhasil. Jalankan ulang script."
- exit 0
-else
- echo "Update gagal."
- rm -f "$tmp"
- pause
-fi
-}
-
-
-menu(){
+manage_droplet_menu(){
 while true; do
 header
 echo "========== MANAGE DROPLET =========="
@@ -555,27 +510,6 @@ done
 }
 
 
-
-update_script(){
-header
-tmp=$(mktemp)
-echo "Checking update..."
-if curl -fsSL "$UPDATE_URL" -o "$tmp"; then
- cp "$0" "$0.bak"
- chmod +x "$tmp"
- cp "$tmp" "$0"
- chmod +x "$0"
- rm -f "$tmp"
- echo "Update berhasil. Jalankan ulang script."
- exit 0
-else
- echo "Update gagal."
- rm -f "$tmp"
- pause
-fi
-}
-
-
 menu(){
 while true; do
 header
@@ -583,7 +517,6 @@ echo "1. Select Account"
 echo "2. Add Account"
 echo "3. Delete Account"
 echo "4. Manage Droplet"
-echo "5. Update Script"
 echo "0. Exit"
 echo
 read -p "Choose : " c
@@ -592,7 +525,6 @@ case $c in
 2) add_account ;;
 3) delete_account ;;
 4) manage_droplet_menu ;;
-5) update_script ;;
 0) exit 0 ;;
 esac
 done
