@@ -384,18 +384,40 @@ echo "Destroy request sent."
 pause
 }
 
+
+manage_droplet_menu(){
+while true; do
+header
+echo "========== MANAGE DROPLET =========="
+echo "1. List Droplets"
+echo "2. Deploy Droplet"
+echo "3. Reboot Droplet"
+echo "4. Rebuild Droplet"
+echo "5. Resize Droplet"
+echo "6. Destroy Droplet"
+echo "0. Back"
+echo
+read -p "Choose : " c
+case $c in
+1) list_droplets ;;
+2) deploy_droplet ;;
+3) reboot_droplet ;;
+4) rebuild_droplet ;;
+5) resize_droplet ;;
+6) destroy_droplet ;;
+0) return ;;
+esac
+done
+}
+
+
 menu(){
 while true; do
 header
 echo "1. Select Account"
 echo "2. Add Account"
 echo "3. Delete Account"
-echo "4. List Droplets"
-echo "5. Deploy Droplet"
-echo "6. Reboot Droplet"
-echo "7. Rebuild Droplet"
-echo "8. Resize Droplet"
-echo "9. Destroy Droplet"
+echo "4. Manage Droplet"
 echo "0. Exit"
 echo
 read -p "Choose : " c
@@ -403,12 +425,7 @@ case $c in
 1) select_account ;;
 2) add_account ;;
 3) delete_account ;;
-4) list_droplets ;;
-5) deploy_droplet ;;
-6) reboot_droplet ;;
-7) rebuild_droplet ;;
-8) resize_droplet ;;
-9) destroy_droplet ;;
+4) manage_droplet_menu ;;
 0) exit 0 ;;
 esac
 done
