@@ -75,7 +75,7 @@ select_account(){
     echo "$line" > "$ACTIVE_FILE"
     load_active
     echo -e "${GREEN}Active account changed.${NC}"
-    echo
+    sleep 1
     account_info
 }
 
@@ -471,24 +471,22 @@ manage_droplet_menu(){
 while true; do
 header
 echo "========== MANAGE DROPLET =========="
-echo "1. Account Information"
-echo "2. List Droplets"
-echo "3. Deploy Droplet"
-echo "4. Reboot Droplet"
-echo "5. Rebuild Droplet"
-echo "6. Resize Droplet"
-echo "7. Destroy Droplet"
+echo "1. List Droplets"
+echo "2. Deploy Droplet"
+echo "3. Reboot Droplet"
+echo "4. Rebuild Droplet"
+echo "5. Resize Droplet"
+echo "6. Destroy Droplet"
 echo "0. Back"
 echo
 read -p "Choose : " c
 case $c in
-1) account_info ;;
-2) list_droplets ;;
-3) deploy_droplet ;;
-4) reboot_droplet ;;
-5) rebuild_droplet ;;
-6) resize_droplet ;;
-7) destroy_droplet ;;
+1) list_droplets ;;
+2) deploy_droplet ;;
+3) reboot_droplet ;;
+4) rebuild_droplet ;;
+5) resize_droplet ;;
+6) destroy_droplet ;;
 0) return ;;
 esac
 done
