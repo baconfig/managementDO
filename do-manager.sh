@@ -1,126 +1,7 @@
 #!/bin/bash" ;;
 
-API_FILE="api_keys.db"
-
-touch "$API_FILE"
-
-
-
-
-
-
 # Fungsi untuk memvalidasi API Key
-validate_api_key() add_api() {
-    clear
-
-    read -p "Nama API: " api_name
-    read -sp "Token API: " api_token
-    echo ""
-
-    if validate_api_key "$api_token"; then
-
-        echo "${api_name}|${api_token}" >> "$API_FILE"
-
-        echo "API berhasil ditambahkan."
-
-    else
-
-        echo "API tidak valid."
-
-    fi
-
-    read -p "Enter untuk lanjut..."
-}
-show_api_list() {
-
-    clear
-
-    echo "===== DAFTAR API ====="
-
-    nl -w2 -s'. ' "$API_FILE"
-
-    echo ""
-}
-select_api() {
-
-    show_api_list
-
-    read -p "Pilih nomor API: " nomor
-
-    selected=$(sed -n "${nomor}p" "$API_FILE")
-
-    api_name=$(echo "$selected" | cut -d'|' -f1)
-
-    api_key=$(echo "$selected" | cut -d'|' -f2)
-
-    if [ -z "$api_key" ]; then
-
-        echo "Pilihan tidak valid."
-
-        return 1
-
-    fi
-
-    echo ""
-    echo "Menggunakan API : $api_name"
-
-    sleep 2
-
-    return 0
-}
-delete_api() {
-
-    show_api_list
-
-    read -p "Nomor API yang ingin dihapus: " nomor
-
-    sed -i "${nomor}d" "$API_FILE"
-
-    echo "API berhasil dihapus."
-
-    sleep 2
-}
-api_menu() {
-
-while true
-do
-
-    clear
-
-    echo "===== DIGITALOCEAN API MANAGER ====="
-    echo ""
-    echo "1. Pilih API"
-    echo "2. Tambah API"
-    echo "3. Hapus API"
-    echo "0. Lanjut"
-    echo ""
-
-    read -p "Pilih: " pilih
-
-    case $pilih in
-
-        1)
-            select_api
-            ;;
-
-        2)
-            add_api
-            ;;
-
-        3)
-            delete_api
-            ;;
-
-        0)
-            break
-            ;;
-
-    esac
-
-done
-
-}
-{
+validate_api_key() {
     local api_key=$1
     local response=$(curl -s -o /dev/null -w "%{http_code}" \
         -H "Authorization: Bearer $api_key" \
@@ -132,6 +13,77 @@ done
         return 1
     fi
 }
+
+
+# ===== Multi API Manager =====
+API_FILE="api_keys.db"
+touch "$API_FILE"
+
+add_api() {
+    clear
+    read -p "Nama API: " api_name
+    read -sp "Token API: " api_token
+    echo ""
+    if validate_api_key "$api_token"; then
+        echo "${api_name}|${api_token}" >> "$API_FILE"
+        echo "API berhasil ditambahkan."
+    else
+        echo "API tidak valid."
+    fi
+    read -p "Tekan Enter..."
+}
+
+show_api_list() {
+    clear
+    echo "===== DAFTAR API ====="
+    nl -w2 -s'. ' "$API_FILE"
+    echo ""
+}
+
+select_api() {
+    show_api_list
+    read -p "Pilih nomor API: " nomor
+    selected=$(sed -n "${nomor}p" "$API_FILE")
+    api_name=$(echo "$selected" | cut -d'|' -f1)
+    api_key=$(echo "$selected" | cut -d'|' -f2)
+
+    if [ -z "$api_key" ]; then
+        echo "Pilihan tidak valid."
+        return 1
+    fi
+
+    echo "Menggunakan API : $api_name"
+    sleep 2
+    return 0
+}
+
+delete_api() {
+    show_api_list
+    read -p "Nomor API yang ingin dihapus: " nomor
+    sed -i "${nomor}d" "$API_FILE"
+    echo "API berhasil dihapus."
+    sleep 2
+}
+
+api_menu() {
+    while true; do
+        clear
+        echo "===== DIGITALOCEAN API MANAGER ====="
+        echo "1. Pilih API"
+        echo "2. Tambah API"
+        echo "3. Hapus API"
+        echo "0. Lanjut"
+        read -p "Pilih: " pilih
+
+        case $pilih in
+            1) select_api ;;
+            2) add_api ;;
+            3) delete_api ;;
+            0) break ;;
+        esac
+    done
+}
+# ===== End Multi API Manager =====
 
 # Fungsi size map untuk menampilkan ukuran droplet berdasarkan slug
 size_map() {
@@ -595,19 +547,20 @@ main_menu() {
     done
 }
 # Meminta API Key dan validasi
-api_menu
+while true; do
+    clear
+    read -sp "Masukkan DigitalOcean API Key Anda: " api_key
+    echo ""
 
-if [ -z "$api_key" ]; then
-
-    echo "Pilih API terlebih dahulu."
-
-    exit 1
-
-fi
-
-show_droplet_list "$api_key"
-
-main_menu
+    if validate_api_key "$api_key"; then
+        clear
+        echo "API Key valid! Menampilkan daftar droplet..."
+        show_droplet_list "$api_key"
+        break
+    else
+        echo "API Key tidak valid. Silakan coba lagi."
+    fi
+done
 
 # Memanggil menu utama
 main_menu
