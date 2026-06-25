@@ -342,7 +342,7 @@ rebuild_droplet(){
 header
 [ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
 select_droplet_menu || { pause; return; }
-choose_image
+choose_image || return
 
 curl -s -X POST -H "Authorization: Bearer $ACTIVE_TOKEN" \
 -H "Content-Type: application/json" \
@@ -359,7 +359,7 @@ choose_size || return
 
 curl -s -X POST -H "Authorization: Bearer $ACTIVE_TOKEN" \
 -H "Content-Type: application/json" \
--d "{\"type\":\"resize\",\"size\":\"$size\"}" \
+-d "{\"type\":\"resize\",\"size\":\"$size\",\"disk\":false}" \
 "https://api.digitalocean.com/v2/droplets/$SELECTED_ID/actions" | jq .
 pause
 }
