@@ -198,67 +198,12 @@ done
 }
 
 
-select_droplet_
-account_info(){
-header
-[ -z "$ACTIVE_TOKEN" ] && echo "Select account first" && pause && return
 
-data=$(curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" \
-https://api.digitalocean.com/v2/account)
-
-email=$(echo "$data" | jq -r '.account.email')
-uuid=$(echo "$data" | jq -r '.account.uuid')
-status=$(echo "$data" | jq -r '.account.status')
-droplet_limit=$(echo "$data" | jq -r '.account.droplet_limit')
-email_verified=$(echo "$data" | jq -r '.account.email_verified')
-team_name=$(echo "$data" | jq -r '.account.team.name // "Personal Account"')
-
-total_droplets=$(curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" \
-https://api.digitalocean.com/v2/droplets | jq '.droplets | length')
-
-total_keys=$(curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" \
-https://api.digitalocean.com/v2/account/keys | jq '.ssh_keys | length')
-
-total_projects=$(curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" \
-https://api.digitalocean.com/v2/projects | jq '.projects | length')
-
-echo -e "${CYAN}╔════════════════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║           INFORMASI AKUN DIGITALOCEAN             ║${NC}"
-echo -e "${CYAN}╚════════════════════════════════════════════════════╝${NC}"
-
-printf "${YELLOW}%-18s${NC} : %s
-" "Email" "$email"
-printf "${YELLOW}%-18s${NC} : %s
-" "UUID" "$uuid"
-printf "${YELLOW}%-18s${NC} : %s
-" "Status" "$status"
-printf "${YELLOW}%-18s${NC} : %s
-" "Email Verified" "$email_verified"
-printf "${YELLOW}%-18s${NC} : %s
-" "Droplet Limit" "$droplet_limit"
-printf "${YELLOW}%-18s${NC} : %s
-" "Team" "$team_name"
-
-echo
-echo -e "${CYAN}══════════ RESOURCE SUMMARY ══════════${NC}"
-
-printf "${BLUE}%-18s${NC} : %s
-" "Total Droplets" "$total_droplets"
-printf "${BLUE}%-18s${NC} : %s
-" "SSH Keys" "$total_keys"
-printf "${BLUE}%-18s${NC} : %s
-" "Projects" "$total_projects"
-
-echo -e "${CYAN}══════════════════════════════════════${NC}"
-pause
-}
-
-
-menu(){
+select_droplet_menu(){
     mapfile -t droplets < <(
         curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" \
         https://api.digitalocean.com/v2/droplets | \
-        jq -r '.droplets[] | "\(.id)|\(.name)|\(.networks.v4[0].ip_address // "N/A")"'
+        jq -r '.droplets[] | "\(.id)|\(.name)|\(.networks.v4[0].ip_address // \"N/A\")"'
     )
 
     [ ${#droplets[@]} -eq 0 ] && echo "No droplets found." && return 1
@@ -276,14 +221,8 @@ menu(){
     echo "0. Back to Main Menu"
     read -p "Choose Number: " num
 
-    if [ "$num" = "0" ]; then
-        return 1
-    fi
-
-    if ! [[ "$num" =~ ^[0-9]+$ ]] || [ "$num" -lt 1 ] || [ "$num" -gt "${#droplets[@]}" ]; then
-        echo "Invalid selection."
-        return 1
-    fi
+    [ "$num" = "0" ] && return 1
+    [[ ! "$num" =~ ^[0-9]+$ ]] && return 1
 
     IFS='|' read -r SELECTED_ID SELECTED_NAME SELECTED_IP <<< "${droplets[$((num-1))]}"
 }
