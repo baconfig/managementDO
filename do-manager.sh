@@ -25,7 +25,7 @@ header(){
 clear
 load_active
 echo -e "${CYAN}====================================================${NC}"
-echo -e "${GREEN} MANAGE API DigitalOcean By Ahmadstore ${NC}"
+echo -e "${GREEN} MANAGE API DigitalOcean By Ahmadstoreku ${NC}"
 echo -e "${CYAN}====================================================${NC}"
 if [ -n "$ACTIVE_TOKEN" ]; then
 info=$(curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" https://api.digitalocean.com/v2/account)
