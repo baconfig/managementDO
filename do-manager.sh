@@ -25,7 +25,24 @@ load_active
 echo -e "${CYAN}====================================================${NC}"
 echo -e "${GREEN} DigitalOcean Multi Account Manager v3 ${NC}"
 echo -e "${CYAN}====================================================${NC}"
-echo -e "Active Account : ${YELLOW}${ACTIVE_NAME:-None}${NC}"
+if [ -n "$ACTIVE_TOKEN" ]; then
+info=$(curl -s -H "Authorization: Bearer $ACTIVE_TOKEN" https://api.digitalocean.com/v2/account)
+name=$(echo "$info" | jq -r '.account.name // "-"')
+email=$(echo "$info" | jq -r '.account.email // "-"')
+status=$(echo "$info" | jq -r '.account.status // "-"')
+droplet_limit=$(echo "$info" | jq -r '.account.droplet_limit // "-"')
+printf "Account : %s
+" "$name"
+printf "Email   : %s
+" "$email"
+printf "Status  : %s
+" "$status"
+printf "Limit   : %s Droplets
+" "$droplet_limit"
+else
+echo "Active Account : None"
+fi
+echo "===================================================="
 echo
 }
 
@@ -73,10 +90,8 @@ select_account(){
     fi
 
     echo "$line" > "$ACTIVE_FILE"
-    load_active
     echo -e "${GREEN}Active account changed.${NC}"
-    sleep 1
-    account_info
+    pause
 }
 
 delete_account(){
@@ -471,22 +486,24 @@ manage_droplet_menu(){
 while true; do
 header
 echo "========== MANAGE DROPLET =========="
-echo "1. List Droplets"
-echo "2. Deploy Droplet"
-echo "3. Reboot Droplet"
-echo "4. Rebuild Droplet"
-echo "5. Resize Droplet"
-echo "6. Destroy Droplet"
+echo "1. Account Information"
+echo "2. List Droplets"
+echo "3. Deploy Droplet"
+echo "4. Reboot Droplet"
+echo "5. Rebuild Droplet"
+echo "6. Resize Droplet"
+echo "7. Destroy Droplet"
 echo "0. Back"
 echo
 read -p "Choose : " c
 case $c in
-1) list_droplets ;;
-2) deploy_droplet ;;
-3) reboot_droplet ;;
-4) rebuild_droplet ;;
-5) resize_droplet ;;
-6) destroy_droplet ;;
+1) account_info ;;
+2) list_droplets ;;
+3) deploy_droplet ;;
+4) reboot_droplet ;;
+5) rebuild_droplet ;;
+6) resize_droplet ;;
+7) destroy_droplet ;;
 0) return ;;
 esac
 done
